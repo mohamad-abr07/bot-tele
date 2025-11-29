@@ -11,7 +11,7 @@ from telegram.ext import (
 
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = 1645273556
-YOUTUBE_URL = "https://www.youtube.com/channel/UCfyIOJ9fAt7GtnetPRACCxA"
+YOUTUBE_URL = "https://www.youtube.com/channel/UClJqU7nkpXGW-yl4-wB1O2w"
 STATE_FILE = "state.json"
 DELETE_ENGLISH = True
 BLOCKED_WORDS = ["کسخل", "لاشی", "کس", "کص", "کیر"]
