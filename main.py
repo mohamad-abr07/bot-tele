@@ -6,17 +6,16 @@ from typing import Dict
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, constants
 from telegram.ext import (
     Application, MessageHandler, CallbackQueryHandler,
-    ContextTypes, filters, Defaults
+    ContextTypes, filters, Defaults, CommandHandler
 )
 
 # ---------------- Config ----------------
-TOKEN = os.getenv("BOT_TOKEN")           # مهم: توکن از محیط میاد
-OWNER_ID = 1645273556                    # آیدی خودت
+TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = 1645273556
 YOUTUBE_URL = "https://www.youtube.com/channel/UCfyIOJ9fAt7GtnetPRACCxA"
 STATE_FILE = "state.json"
 DELETE_ENGLISH = True
 
-# کلمات ممنوعه
 BLOCKED_WORDS = ["کسخل", "لاشی", "کس", "کص", "کیر"]
 
 
@@ -68,7 +67,17 @@ def ensure_user(state: Dict[str, Dict[str, bool]], user_id: int):
         state[str(user_id)] = {"allowed": False, "clicked_link": False}
 
 
-# ---------------- Handlers ----------------
+# ---------------- /start Handler ----------------
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    mention = user.mention_html() if user else "کاربر"
+
+    await update.message.reply_html(
+        f"سلام {mention} 👋\n\nربات فعاله و درست کار می‌کنه 🚀"
+    )
+
+
+# ---------------- Message Handler ----------------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
@@ -78,19 +87,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text or ""
     user_id = user.id
 
-    # صاحب ربات فیلتر نمی‌شود
     if user_id == OWNER_ID:
         return
 
     ensure_user(STATE, user_id)
     st = STATE[str(user_id)]
 
-    # اگر اجازه ندارد
     if not st["allowed"]:
-        try:
-            await update.message.delete()
-        except:
-            pass
+        try: await update.message.delete()
+        except: pass
 
         mention = user.mention_html() if user else "کاربر"
 
@@ -105,23 +110,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # فیلتر انگلیسی
     if DELETE_ENGLISH and contains_english(text):
-        try:
-            await update.message.delete()
-        except:
-            pass
+        try: await update.message.delete()
+        except: pass
         return
 
-    # فیلتر کلمات ممنوعه
     if contains_blocked_word(text):
-        try:
-            await update.message.delete()
-        except:
-            pass
+        try: await update.message.delete()
+        except: pass
         return
 
 
+# ---------------- Callback Handler ----------------
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
@@ -162,9 +162,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
 
+# ---------------- Main ----------------
 async def main():
     defaults = Defaults(parse_mode=constants.ParseMode.HTML)
     app = Application.builder().token(TOKEN).defaults(defaults).build()
+
+    # دستور استارت اضافه شد
+    app.add_handler(CommandHandler("start", start))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
