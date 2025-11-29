@@ -9,17 +9,13 @@ from telegram.ext import (
     CommandHandler, ContextTypes, filters, Defaults
 )
 
-# ---------------- Config ----------------
-TOKEN = os.getenv("BOT_TOKEN")           # توکن از محیط گرفته می‌شود
-OWNER_ID = 1645273556                    # آیدی خودت
+TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = 1645273556
 YOUTUBE_URL = "https://www.youtube.com/channel/UCfyIOJ9fAt7GtnetPRACCxA"
 STATE_FILE = "state.json"
 DELETE_ENGLISH = True
-
-# کلمات ممنوعه
 BLOCKED_WORDS = ["کسخل", "لاشی", "کس", "کص", "کیر"]
 
-# ---------------- Utility ----------------
 def _normalize_fa(text: str) -> str:
     if not text:
         return ""
@@ -41,7 +37,6 @@ def contains_blocked_word(message: str) -> bool:
 def contains_english(message: str) -> bool:
     return bool(re.search(r"[A-Za-z]", message or ""))
 
-# ---------------- State ----------------
 def load_state() -> Dict[str, Dict[str, bool]]:
     if os.path.exists(STATE_FILE):
         try:
@@ -61,74 +56,55 @@ def ensure_user(state: Dict[str, Dict[str, bool]], user_id: int):
     if str(user_id) not in state:
         state[str(user_id)] = {"allowed": False, "clicked_link": False}
 
-# ---------------- Handlers ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     mention = user.mention_html() if user else "کاربر"
     await update.message.reply_html(
-        f"👋 {mention}\nربات فعال است! برای شروع، می‌توانید پیام بدهید یا دکمه‌ها را دنبال کنید."
+        f"👋 {mention}\nربات فعال است!"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-
     user = update.effective_user
     chat = update.effective_chat
     text = update.message.text or ""
     user_id = user.id
-
     if user_id == OWNER_ID:
         return
-
     ensure_user(STATE, user_id)
     st = STATE[str(user_id)]
-
     if not st["allowed"]:
-        try:
-            await update.message.delete()
-        except:
-            pass
-
+        try: await update.message.delete()
+        except: pass
         mention = user.mention_html() if user else "کاربر"
-
         keyboard = [
             [InlineKeyboardButton("📺 گرفتن لینک کانال یوتیوب", callback_data=f"get_link:{user_id}")],
             [InlineKeyboardButton("✅ سابسکرایب کردم", callback_data=f"subscribed:{user_id}")]
         ]
-
         await chat.send_message(
             text=f"👋 {mention}\n\nبرای ارسال پیام، اول «گرفتن لینک کانال یوتیوب» رو بزن و بعد «سابسکرایب کردم».",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
         return
-
     if DELETE_ENGLISH and contains_english(text):
-        try:
-            await update.message.delete()
-        except:
-            pass
+        try: await update.message.delete()
+        except: pass
         return
-
     if contains_blocked_word(text):
-        try:
-            await update.message.delete()
-        except:
-            pass
+        try: await update.message.delete()
+        except: pass
         return
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
         return
-
     user = query.from_user
     user_id = user.id
     data = query.data
-
     ensure_user(STATE, user_id)
     st = STATE[str(user_id)]
-
     if ":" in data:
         action, target_id = data.split(":")
         if int(target_id) != user_id:
@@ -136,14 +112,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
     else:
         action = data
-
     if action == "get_link":
         st["clicked_link"] = True
         save_state(STATE)
         await query.answer("لینک برایت ارسال شد.")
         kb = [[InlineKeyboardButton("باز کردن کانال یوتیوب", url=YOUTUBE_URL)]]
         await query.message.reply_text("📺 اینم کانال:", reply_markup=InlineKeyboardMarkup(kb))
-
     elif action == "subscribed":
         if not st["clicked_link"]:
             await query.answer("اول لینک کانال رو بگیر.", show_alert=True)
@@ -153,21 +127,16 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("دسترسی فعال شد!")
         try:
             await query.edit_message_text("🎉 حالا می‌تونی پیام بدی.")
-        except:
-            pass
+        except: pass
 
-# ---------------- Main ----------------
 def main():
     defaults = Defaults(parse_mode=constants.ParseMode.HTML)
     app = Application.builder().token(TOKEN).defaults(defaults).build()
-
-    # دستورات
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-
     print("Bot is running on Render...")
-    app.run_polling()  # این روش ساده و سازگار با v21
+    app.run_polling()  # <--- بدون asyncio.run
 
 if __name__ == "__main__":
     main()
