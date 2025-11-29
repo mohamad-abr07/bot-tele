@@ -6,19 +6,20 @@ from typing import Dict
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, constants
 from telegram.ext import (
     Application, MessageHandler, CallbackQueryHandler,
-    ContextTypes, filters, Defaults, CommandHandler
+    CommandHandler, ContextTypes, filters, Defaults
 )
 
 # ---------------- Config ----------------
-TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = 1645273556
+TOKEN = os.getenv("BOT_TOKEN")           # توکن از محیط گرفته می‌شود
+OWNER_ID = 1645273556                    # آیدی خودت
 YOUTUBE_URL = "https://www.youtube.com/channel/UCfyIOJ9fAt7GtnetPRACCxA"
 STATE_FILE = "state.json"
 DELETE_ENGLISH = True
 
+# کلمات ممنوعه
 BLOCKED_WORDS = ["کسخل", "لاشی", "کس", "کص", "کیر"]
 
-
+# ---------------- Utility ----------------
 def _normalize_fa(text: str) -> str:
     if not text:
         return ""
@@ -30,7 +31,6 @@ def _normalize_fa(text: str) -> str:
     text = re.sub(r"[^0-9A-Za-z\u0600-\u06FF]", "", text)
     return text.lower()
 
-
 def contains_blocked_word(message: str) -> bool:
     norm_msg = _normalize_fa(message)
     for w in BLOCKED_WORDS:
@@ -38,46 +38,37 @@ def contains_blocked_word(message: str) -> bool:
             return True
     return False
 
-
 def contains_english(message: str) -> bool:
     return bool(re.search(r"[A-Za-z]", message or ""))
 
-
-# ---------------- State File ----------------
+# ---------------- State ----------------
 def load_state() -> Dict[str, Dict[str, bool]]:
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
+        except:
             return {}
     return {}
-
 
 def save_state(state: Dict[str, Dict[str, bool]]):
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
-
 STATE = load_state()
-
 
 def ensure_user(state: Dict[str, Dict[str, bool]], user_id: int):
     if str(user_id) not in state:
         state[str(user_id)] = {"allowed": False, "clicked_link": False}
 
-
-# ---------------- /start Handler ----------------
+# ---------------- Handlers ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     mention = user.mention_html() if user else "کاربر"
-
     await update.message.reply_html(
-        f"سلام {mention} 👋\n\nربات فعاله و درست کار می‌کنه 🚀"
+        f"👋 {mention}\nربات فعال است! برای شروع، می‌توانید پیام بدهید یا دکمه‌ها را دنبال کنید."
     )
 
-
-# ---------------- Message Handler ----------------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
@@ -94,8 +85,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     st = STATE[str(user_id)]
 
     if not st["allowed"]:
-        try: await update.message.delete()
-        except: pass
+        try:
+            await update.message.delete()
+        except:
+            pass
 
         mention = user.mention_html() if user else "کاربر"
 
@@ -111,17 +104,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if DELETE_ENGLISH and contains_english(text):
-        try: await update.message.delete()
-        except: pass
+        try:
+            await update.message.delete()
+        except:
+            pass
         return
 
     if contains_blocked_word(text):
-        try: await update.message.delete()
-        except: pass
+        try:
+            await update.message.delete()
+        except:
+            pass
         return
 
-
-# ---------------- Callback Handler ----------------
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
@@ -161,25 +156,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
 
-
 # ---------------- Main ----------------
-async def main():
+def main():
     defaults = Defaults(parse_mode=constants.ParseMode.HTML)
     app = Application.builder().token(TOKEN).defaults(defaults).build()
 
-    # دستور استارت اضافه شد
+    # دستورات
     app.add_handler(CommandHandler("start", start))
-
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     print("Bot is running on Render...")
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-    await app.updater.idle()
-
+    app.run_polling()  # این روش ساده و سازگار با v21
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
